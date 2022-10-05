@@ -1,0 +1,869 @@
+:doctype: book
+:encoding: utf-8
+:numbered:
+:source-linenums-option:
+:username: elixircl
+:source: https://github.com/ElixirCL/machine
+:producer: elixircl.github.io
+:copyright: CC-BY-NC-SA 4.0
+:lang: es
+:description: Un simple proyecto para documentar la configuración del ambiente para desarrollo con Elixir en una Raspberry Pi 4 con Debian 11.
+:keywords: elixir, programación, lenguaje, referencia
+:imagesdir: images
+:front-cover-image: assets/cover.png
+:epub-chapter-level: 2
+:toc: left
+:toclevels: 3
+:toc-title: Tabla de Contenidos
+:source-highlighter: highlight.js
+:highlightjs-languages: elixir, javascript, bash, sh, lua, c, txt, html, yaml, toml, json, rust
+:ext-relative:
+//:stylesheet: style.css
+
+# Elixir Dev Machine en Debian 11
+
+Un simple proyecto para documentar la configuración del ambiente
+para desarrollo con Elixir en una Raspberry Pi 4. 
+
+También servirá en su mayoria para cualquier Debian 11.
+
+La idea es tener un entorno minimalista pero bonito, que tenga todas las herramientas
+necesarias para desarrollar proyectos con Elixir. Buscando una estética Synthwave/Cyberpunk.
+
+El objetivo es tener un entorno que se pueda usar con el teclado lo más posible, 
+evitando el uso de ratón (solo para uso en el navegador).
+
+Escrito por https://ninjas.cl[Camilo Castro] y https://github.com/elixircl/machine/graphs/contributors[colaboradores]. 
+Para https://elixircl.github.io[Elixir Chile].
+
+A menos que se especifique explícitamente, los contenidos de ésta obra están bajo una http://creativecommons.org/licenses/by-nc-sa/4.0/[Licencia Creative Commons Atribución-No-Comercial-Compartir-Igual 4.0 Internacional]
+http://creativecommons.org/licenses/by-nc-sa/4.0/[image:https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png[Licencia Creative Commons]]. El código fuente está bajo la licencia MPLv2.
+
+toc::[]
+
+## Componentes de Hardware
+
+- Rasperry PI 4 Model B 8GB Ram comprada en https://altronics.cl/kit-raspberry-pi4-8gb
+- Tarjeta SD Kingstone 32 GB (KN3-042).
+
+## Componentes de Software
+
+Algunos software que se usarán, algunos son opcionales y mera opinión personal.
+
+- DietPI https://dietpi.com/ ARMv8 64-bit (https://dietpi.com/downloads/images/DietPi_RPi-ARMv8-Bullseye.7z)
+- https://dwm.suckless.org/
+- https://www.balena.io/etcher/
+- https://asdf-vm.com/
+- https://neovim.io/
+- https://github.com/alacritty/alacritty
+- https://ohmyz.sh/ o https://fishshell.com/
+- https://starship.rs/
+- https://librewolf.net/installation/debian/
+
+## Instalación de DietPI
+
+Para comenzar descargaremos la imagen de https://dietpi.com/downloads/images/DietPi_RPi-ARMv8-Bullseye.7z[DietPI] y utilizaremos
+https://www.balena.io/etcher/[Balena Etcher] para grabarla en nuestra tarjeta SD.
+
+La insertamos en nuestra Raspberry y comenzaremos el proceso de instalación.
+Idealmente siguiendo las guías de instalación y seguridad.
+
+- https://www.raspberrypi.com/documentation/computers/configuration.html#securing-your-raspberry-pi
+- https://raspberrypi-guide.github.io/other/Improve-raspberry-pi-security
+- https://dietpi.com/docs/install/
+
+## Config Inicial
+
+### Actualización
+
+```sh
+# sudo apt-get update
+# sudo apt-get upgrade
+```
+
+### Neovim
+Nuestro editor de cabecera será _NeoVim_, para instalarlo debemos https://github.com/neovim/neovim/wiki/Installing-Neovim[seguir su manual].
+Ésto solamente será para tener un editor de texto básico. Luego realizaremos una instalación y configuración más apropiada para la edición
+de código fuente.
+
+```sh
+# apt-get install neovim
+```
+
+### Git
+Nuestro control de versiones será con _GIT_. Luego podremos configurarlo apropiadamente. Por ahora nos servirá para descargar algunas herramientas.
+
+```sh
+# apt-get install git
+```
+
+También si se trabaja mucho con Github se puede instalar https://github.com/github/hub[`hub`]:
+
+```sh
+# apt install hub
+```
+
+### Configuración de las Fuentes de Terminal
+
+La terminal se verá mejor si se selecciona la fuente _TerminusBold_ de _16x32_.
+La terminal utiliza fuentes `.psf` (bitmap) y no permite `.ttf` (vectorial) https://raspberrypi.stackexchange.com/questions/71911/how-do-i-install-a-new-console-font[ver más].
+
+```sh
+# dpkg-reconfigure console-setup
+```
+
+Ésto sólo aplica si vas a usar la pantalla directamente. Si te conectas por SSH a la raspberry entonces puede no ser necesario.
+De todas formas se puede configurar para mayor facilidad de lectura en pantallas con alta resolución.
+
+### SSH
+
+_SSH_ es necesario para acceder remotamente a nuestra máquina.
+_DietPI_ ofrece dos alternativas. https://matt.ucc.asn.au/dropbear/dropbear.html[Dropbear] y https://www.openssh.com/[OpenSSH].
+
+_Dropbear_ es una alternativa ligera, pero carece de ciertas características como _scp_ y _sftp_. Por lo que debemos https://github.com/MichaIng/DietPi/issues/3296[instalarlas por separado] mediante las herramientas de _OpenSSH_ (solo cliente, no servidor).
+
+```sh
+# apt install openssh-client openssh-sftp-server
+```
+
+_OpenSSH_ es la opción tradicional y más completa.
+
+Se puede instalar mediante:
+
+```sh
+# dietpi-software install 105
+```
+
+o (para Debian 11)
+
+```sh
+# apt install openssh-server
+```
+
+Podremos verificar su funcionamiento mediante el comando:
+
+```sh
+# ss -tlpn
+```
+
+### Banners
+
+Lo primero que haremos es poner un login screen bien pulento, recordando los viejos tiempos de la BBS.
+Usaremos el siguiente ANSI:
+
+image:https://user-images.githubusercontent.com/292738/185671384-035eaf43-7a56-4f38-ba8f-a88ab62bd000.png[https://16colo.rs/pack/rev0902/LD-EMENU.ANS]
+
+Obtenido desde https://16colo.rs/pack/rev0902/LD-EMENU.ANS
+
+También usaremos un conversor de CP437 a UTF8
+
+http://codelobe.com/tools/cp437-converter
+
+con unos pocos ajustes se debería ver así:
+
+image:https://user-images.githubusercontent.com/292738/185677622-ef4ae111-076c-458b-80f7-a30fac21e193.png[]
+
+```text
+[35m░░▓▌    ▐██▀[37m  [1;33m▄▄▄▄▄[0m [35m▀▀███▓▓▓▀▀▀▀▀█▓▀▀▀▀▀▀▀▀█▓▀▀▀▀▀▀▀▀▀▀▀▀▀▀▓▓██▀  █▓▓▓▓██▄ ▐▓░░
+▓▓██▄▄▄[1;45m░[0;35m▀▐▌[37m  [1;33m▐█[0;33m▀▀[1;43m▀[47m▓▓[43m█[40m▄▄▄[0m [35m▀▀▀[37m [1;33;47m▓▓[43m█[0m [35m██[37m  [1;33;47m▓[43m█[40m▌[43m█[47m▓[40m▄[0;35m▀[37m  [1;33m▄[43m██[40m▐[47m▓[43m█[0m [1;33;43m█[47m▓[43m▓▓█[40m▄▄[0m [35m▀[1m▒[0;35m▄▄█▀   ▐██▓▓██▓▓[37m[0m
+[35m  ▐██[1;45m░[0;35m▄▄[1;45m▓░[0;35m▓▄[37m [33m [1m▀▀[0m [33m▐[1;43m█▓▓[40m▀▀▀[43m███▓[0;33m [1;43m▓▓▒[0m [35m▓█░[33m [1m▐[43m▓▓[0m [1;33m▀[43m█▓[40m▄[47m▓▓[40m▀[0m [1;33m▐[43m▓▓[0m [1;33;43m▓▓▒[0m [1;33m▀▀[47m▓[43m█[40m▌[0;35m▐███▄  ▄███[1;45m░░░[0;35m███[37m[0m
+[35m▄▄█▌▄██[1;45m░░░[0;35m███▄▄▌[37m [33m▐[1;43m▓▒[0;33m▌[37m [35m   ▄[37m  [33m▐[1;43m▒▒[0;33m▌[35m▐█[1m▒[0;35m▌[33m ▐[1;43m▒▒[0m  [33m▄[1;43m░▓▓[40m▄[0m [35m [1;33;43m░▒[40m▌[0m [1;33m▐[43m▒▒[0;33m▄▄[1;43m▒▓[40m▀[0;33m [35m▓█▀▄▓████[1;45m░░▓▓▓░[0;35m██ 
+[1;45m░░[0;35m██▀[37m [33m▄▄▄▄▄[37m [35m▀██[37m  [33m█[1;43m░[0;33m█▀▀▀▀[35m▄▓░[37m [33m▓[1;43m░░[0;33m▌[35m▀ [33m▄▄▄▓[1;43m░░[0;33m▄█[1;43m░[0;33m▀[37m [33m▀[1;43m░░[0;33m▄[1;43m░░[0;33m▓[37m [33m▐[1;43m░░[0;33m▓[1;43m░░[0;33m▄▄[37m [35m▀██▀▀[37m [33m▄▄▄▄▄[37m [35m▀[1;45m░[0;35m█[1m▒[0;35m█[37m[0m
+[35m██▓▓[37m [33m▓[1;43m▓▓▀[0;33m▀▀▀▌[35m▐█[37m  [33m███[37m [35m▓▀▀[37m [33m▄▄██▌▀▄███▀▀▀███▄[37m [35m▐▄ [37m [33m▀██▌▀▄▓██▌[37m [33m▀▀██▄[37m [35m░[37m [33m▐▀▀▀[1;43m▀▓▓[0;33m▓[37m [35m███▓[37m[0m
+[35m▀[37m [33m▄[37m [35m [33m█[1;43m▒▒[0;33m [37m  [35m▄▄▐▓░[37m [33m▐[1;43m░░[0;33m▓▄▄███▀▀▐█[1;43m  [0;33m▀[37m[3C[33m▄▄ ▀██▓ [35m▓█[37m[3C[33m▀▀███▀▀[35m ▓▌[37m [33m [1;43m░░[0;33m█[37m [35m▓▄▄[37m  [33m [1;43m▒▒[0;33m█[37m  [33m▄[37m [35m░[37m[0m
+ [1;33;43m▄[0;33m▌[35m░[37m [33m▐[1;43m░░[0;33m▌[37m [35m▐[1m▒[0;35m███▌  [33m▀███▀▀▄▄███[1;43m░░[0;33m▄ [35m░[33m [1;43m░[0;33m▌ ▀[37m [33m▐█[1;43m░[0;33m▌[35m░[37m [33m▄▄███[1;43m░░[0;33m▄▄[35m ▀▀  [1;33m▐[43m▓░[0;33m▌[35m▐██▌[33m ▐[1;43m░░[0;33m▌[35m░[37m [33m▐[1;43m░[0m
+ [1;33;43m▓▌[0;33m▄▄▄▀██▄▄▄[37m [35m▀▀▀[37m  [33m▄▄▄█[1;43m░░[0;33m▀▀[37m[4C[33m▀[1;43m░▓[0;33m  ▀█▄▄▄[1;43m░░[0;33m▀ ▄█▀▀[37m[5C[33m▀▀███▄▄▄[1;43m░░[0;33m█[37m [35m▀[37m [33m▄▄▄█[1;43m░[0;33m▀▄▄▄[1;43m░▓[0m
+ [1;33;43m▒▒[0;33m▀▀▀█[1;43m░░[0;33m▀▀▓▓▓█▓███▀▀▀[37m[9C[33m▐[1;43m░[0;33m   [37m [33m▀▀▀▀   █▌[37m[11C[33m▀▀▀██████▓▓▀▀██▓▀▀▀[1;43m░▒[0m
+ [33m▐[1;43m░[0;33m▌ [35m▄[33m  ▀▌ [37m[3C[33m    [37m[3C[33m       ▐▄▄▀  [35m          [33m ▀▄▄▀              [37m[6C[33m▐▀[37m  [35m▄ [33m▐[1;43m░[0;33m▌[37m[0m
+  [33m█[1;43m░[0;33m▌ [35m▓▄[33m  [37m[61C[35m▄█ [37m [33m█[1;43m░[0;33m [37m[0m
+[33m░[37m [33m █▓▌ [35m▀[33m [37m[4C[33m [37m        [9C[33m [37m             [5C[33m  [37m                  [35m▀[37m   [33m█▓ ░[37m[0m
+[33m  [37m [33m▐█▓▌[37m[6C[33m [37m           [6C[33m [37m         [9C[33m  [37m             [7C[33m ▐█▌[37m[0m
+[33m▐▄▄██▀[37m[7C[33m [37m               [33m   [37m          [8C[33m  [37m                 [4C[33m ▓█▄▄▌[37m[0m
+  [33m▀▀[37m[9C[33m [37m      [11C[33m [37m   [35mELIXIR Pi     [4C[33m [37m        [9C[33m [37m[3C[33m▀▀
+```
+
+Mayor info sobre los códigos de terminal acá:
+
+- https://wiki.bash-hackers.org/scripting/terminalcodes
+- https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
+
+Para mayor información sobre la configuración de los banners podemos leer la https://dietpi.com/forum/t/tutorial-editing-ditepi-terminal-banner/2712[documentación de DietPi] al respecto.
+
+#### Boot Banner
+
+Para configurarlo simplemente debemos editar el archivo http://www.escomposlinux.org/lfs-es/blfs-es-1.0/postlfs/logon.html[`/etc/issue`].
+Aunque no se verá muy bien debido a las limitaciones de caracteres de la terminal tradicional.
+
+```sh
+# vim /etc/issue
+```
+
+Si queremos ver como queda solo necesitamos aplicar el comando `cat`:
+
+```sh
+# cat /etc/issue
+```
+
+#### SSH Banner
+
+Si nos conectamos por _SSH_ también podemos poner un banner de bienvenida.
+
+Podemos ir a la línea 331 de `/boot/dietpi/func/dietpi-banner`
+y agregar lo siguiente:
+
+```bash
+# Elixir Header
+cat /etc/issue
+```
+
+```text
+....
+#/////////////////////////////////////////////////////////////////////////////////////
+# Main Loop                          
+#/////////////////////////////////////////////////////////////////////////////////////
+                                             
+# Elixir Header
+cat /etc/issue  
+                                                     
+if (( $INPUT == 0 ))
+then                                                               
+    Print_Header
+    Print_Local_Ip                              
+....
+```
+
+Si ejecutamos 
+
+```sh
+# dietpi-banner
+```
+
+podremos configurar otras opciones del banner.
+
+Adicionalmente si editamos el archivo `/boot/dietpi/.dietpi-banner`
+podremos configurar los colores.
+
+```sh
+# vim /boot/dietpi/.dietpi-banner
+```
+Modificando el Color 0 que es de las líneas por un hermoso magenta elixir:
+
+```sh
+aCOLOUR[0]='\e[35m'
+```
+
+Ahora también podremos editar el mensaje que aparece al inicio
+modificando el archivo `/etc/motd` y eliminando el mensaje sobre Debian que aparece.
+
+### Avahi
+
+https://en.wikipedia.org/wiki/Avahi_(software)[Avahi] nos permite conectarnos a través del servicio Bonjour. 
+Si tienes un dispositivo con MacOS podrás ingresar simplemente usando `raspberrypi.local` en ves de la ip
+del dispositivo.
+
+https://www.howtogeek.com/167190/how-and-why-to-assign-the-.local-domain-to-your-raspberry-pi/[Para configurar este dominio especial] 
+debemos ejecutar:
+
+```sh
+# apt-get install avahi-daemon
+```
+
+También si se desea cambiar `raspberrypi` por otra cosa, se debe cambiar `/etc/hostname`
+en este caso lo llamamos `elixir`. Puedes reiniciar el dispositivo después de configurar esto.
+
+image:https://user-images.githubusercontent.com/292738/185757092-29523ce0-c819-4ad5-a7d1-6351f295b35c.png[Elixir Pi SSH]
+
+
+#### Hostname
+
+Si se cambia el hostname, se debe asegurar de que esté dentro del https://www.lookip.net/ip/127.0.1.0[loopback] dentro del archivo
+`/etc/hosts`. Para evitar que salga el error https://www.globo.tech/learning-center/sudo-unable-to-resolve-host-explained/[sudo: unable to resolve host].
+
+Verificar que el contenido sea similar al siguiente:
+
+```text
+127.0.0.1 localhost
+127.0.1.1 elixir
+::1 localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+```
+
+### Compilador de C
+
+C es un lenguaje impresindible para la creación de herramientas y otras utilidades.
+Podemos instalar todas las dependencias necesarias con:
+
+```sh
+# apt -y install gcc g++ make automake
+```
+
+#### GPIO
+
+Para tener acceso a los puertos _GPIO_ se debe instalar algunas bibliotecas adicionales. Los puertos _GPIO_ son útiles por ejemplo, para usar un pequeño parlante para emitir sonidos desde los pines de _GPIO_. Se puede ver el https://github.com/NinjasCL/rpitune[Proyecto Raspberry PI RTTTL] para más detalles.
+
+Hay algunos proyectos para interactuar desde C a los puertos _GPIO_:
+
+- https://github.com/joan2937/pigpio/
+- https://github.com/WiringPi/WiringPi
+- http://www.airspayce.com/mikem/bcm2835/
+
+Se debería añadir el usuario al grupo `gpio`.
+
+```sh
+$ sudo usermod -aG gpio elixir
+```
+
+Si se prefiere usar python se puede instalar las dependencias:
+
+```sh
+$ sudo apt install python3-rpi.gpio
+```
+
+### Creando Usuario Elixir
+
+Para tener un sistema más seguro es necesario evitar logins con los usuarios `root` o `dietpi`,
+para esto crearemos un nuevo usuario llamado `elixir` con https://dietpi.com/forum/t/change-default-root-users-for-security/5810[privilegios de super usuario].
+
+```sh
+# useradd -mk /etc/skel -s /bin/bash elixir
+# passwd elixir
+# usermod -aG sudo elixir
+```
+
+Evitamos logins con `dietpi`
+
+```sh
+# usermod -L dietpi
+```
+
+Es recomendable mantener la capacidad de hacer login con `root` 
+si tenemos acceso local, para cualquier eventualidad. Asi que solamente debemos desactivar el acceso de root por ssh.
+
+De forma predeterminada el servidor de ssh de dietpi es https://dietpi.com/docs/software/ssh/#dropbear[Dropbear].
+Si usas https://www.ibm.com/docs/en/db2/11.1?topic=installation-enable-disable-remote-root-login[eliminamos el acceso a root por ssh[OpenSSH puedes ver ésta guía].
+
+
+Ahora realizaremos toda la configuración restante utilizando el usuario `elixir`.
+
+```sh
+$ ssh elixir@elixir.local
+```
+
+### Instalar ZSH
+
+Primero instalamos _zsh_ y la convertimos en la terminal predeterminada.
+
+```sh
+$ sudo apt install zsh
+$ chsh -s $(which zsh)
+```
+
+Luego instalamos https://ohmyz.sh/#install[Ohmyz.sh]
+
+```sh
+$ sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+```
+
+Ahora editamos `.zshrc` para añadir los https://github.com/MichaIng/DietPi/issues/180[comandos de Dietpi].
+
+```sh
+export PATH=$HOME/bin:/usr/local/bin:/usr/bin:/boot/dietpi:/boot/dietpi/func:/bin:/usr/sbin:/sbin:$PATH
+
+# Añadir al final del archivo
+/boot/dietpi/dietpi-login
+```
+
+### Instalar Exa
+
+https://the.exa.website/[exa] es una mejora al comando `ls`, le agrega color y otras funcionalidades modernas.
+
+```sh
+# apt-get install exa
+```
+
+Para poder ejecutarlo podemos utilizar `exa -lag --header` y aplicar un `alias` para reemplazar ls.
+
+Modificar `.bashrc` o `.zshrc` según corresponda para cada usuario en su `$HOME`.
+
+```sh
+alias ls='exa -lag --header --icons'
+```
+
+Para fish se deberían https://www.joshfinnie.com/blog/moving-from-oh-my-zsh-to-starship-and-fish-shell/[configurar las abreviaciones].
+
+### Instalar Starship
+
+Es un command prompt muy bueno y es compatible con _bash_, _zsh_ y _fish_.
+para instalarlo solo debemos seguir su https://starship.rs/guide/#%F0%9F%9A%80-installation[guía de instalación].
+
+```sh
+# curl -sS https://starship.rs/install.sh | sh
+```
+
+*bash*
+
+Añadir al final de `~/.bashrc`:
+
+```sh
+eval "$(starship init bash)"
+```
+
+*zsh*
+
+Añadir al final de `~/.zshrc`:
+
+```sh
+eval "$(starship init zsh)"
+```
+
+*fish*
+
+Añadir al final de `~/.config/fish/config.fish`:
+
+```fish
+starship init fish | source
+```
+
+### Instalar asdf
+
+https://asdf-vm.com/guide/getting-started.html#_1-install-dependencies[asdf] es un gestor de versiones útil para instalar elixir
+y nodejs, entre otros.
+
+```sh
+$ sudo apt install curl
+$ git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.10.2
+```
+
+Añadimos las configuraciones al final de `.zshrc`
+
+```sh
+# asdf
+. $HOME/.asdf/asdf.sh
+fpath=(${ASDF_DIR}/completions $fpath)
+autoload -Uz compinit && compinit
+```
+
+### Instalar Elixir
+
+Lo primero que debemos hacer es https://www.coletiv.com/blog/how-to-correctly-install-erlang-and-elixir/[instalar las dependencias] para https://github.com/asdf-vm/asdf-erlang[Erlang] y https://github.com/asdf-vm/asdf-elixir[Elixir].
+
+```sh
+$ sudo apt-get -y install build-essential autoconf m4 libncurses5-dev libwxgtk3.0-gtk3-dev libwxgtk-webview3.0-gtk3-dev libgl1-mesa-dev libglu1-mesa-dev libpng-dev libssh-dev unixodbc-dev xsltproc fop libxml2-utils libncurses-dev openjdk-11-jdk
+```
+
+Agregamos Erlang:
+
+```sh
+$ asdf plugin add erlang https://github.com/asdf-vm/asdf-erlang.git
+$ asdf list all erlang
+```
+
+Buscamos la versión que queremos y la instalamos.
+En este caso sería la `25.0.4`
+
+```sh
+$ asdf install erlang 25.0.4
+```
+
+Agregamos Elixir:
+
+```sh
+$ asdf plugin-add elixir https://github.com/asdf-vm/asdf-elixir.git
+$ asdf list all elixir
+```
+
+Buscamos la versión y la instalamos.
+En este caso sería la `1.13.4-otp-25`
+
+Tenemos que tener la otp correspondiente a la versión de erlang que instalamos.
+
+```sh
+$ asdf install elixir 1.13.4-otp-25
+```
+
+Ahora definimos la versión global
+
+```sh
+$ asdf global erlang 25.0.4
+$ asdf global elixir 1.13.4-otp-25
+```
+
+Ahora si ejecutamos `elixir -v` 
+nos debería arrojar algo similar a:
+
+```text
+Erlang/OTP 25 [erts-13.0.4] [source] [64-bit] [smp:4:4] [ds:4:4:10] [async-threads:1] [jit]
+
+Elixir 1.13.4 (compiled with Erlang/OTP 25)
+```
+
+### Instalar Phoenix
+
+Phoenix es el framework de desarrollo web por excelencia de Elixir. 
+Para instalarlo podemos https://hexdocs.pm/phoenix/installation.html[seguir su guía].
+
+```sh
+$ sudo apt-get install inotify-tools
+$ mix local.hex
+$ mix local.rebar --force
+$ mix archive.install hex phx_new
+```
+
+#### Instalar PostgreSQL
+
+https://linuxhint.com/install-postgresql-debian/[_PostgreSQL_ es la base de datos] recomendada para proyectos con Phoenix.
+En este caso se ha instalado la versión *13*.
+
+```sh
+$ sudo apt install postgresql postgresql-contrib
+```
+
+Le añadimos la contraseña `postgres` al usuario `postgres`:
+
+```sh
+$ sudo passwd postgres
+$ sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
+$ sudo /etc/init.d/postgresql restart
+```
+
+Para saber el estado del servidor de _PostgreSQL_:
+
+```sh
+$ sudo systemctl status postgresql
+```
+
+Para iniciar el servidor o detener de _PostgreSQL_:
+
+```sh
+$ sudo systemctl start postgresql
+$ sudo systemctl stop postgresql
+$ sudo /etc/init.d/postgresql restart
+```
+
+Para más https://wiki.debian.org/PostgreSql[opciones de configuración] se puede ver la https://www.postgresql.org/docs/13/[documentación]:
+
+- Archivos de configuración: `/etc/postgresql/[version]/[cluster]/`
+- Binarios: `/usr/lib/postgresql/[version]`
+- Archivos de datos: `/var/lib/postgresql/[version]/[cluster]`
+
+#### Instalar NodeJS
+
+https://nodejs.org/en/[NodeJS] es utilizado para compilar los assets de Phoenix. Por lo que https://blog.logrocket.com/manage-node-js-versions-using-asdf/[necesitamos instalarlo] también
+utilizando `asdf`. Usaremos tanto la version `lts` como `latest`.
+
+```sh
+$ sudo apt -y install gnupg
+$ asdf plugin add nodejs https://github.com/asdf-vm/asdf-nodejs.git
+$ asdf list all nodejs
+$ asdf install nodejs lts
+$ asdf install nodejs latest
+$ asdf global nodejs latest
+```
+
+Verificamos que funcione con:
+
+```sh
+$ node -v
+v18.7.0
+```
+
+#### Proyecto de Prueba
+
+Para probar que esta correctamente ejecutándose crearemos un https://hexdocs.pm/phoenix/up_and_running.html[nuevo proyecto de Phoenix].
+
+```sh
+$ mix phx.new prueba
+$ cd prueba
+$ mix ecto.create
+```
+
+Veríamos un mensaje similar a:
+
+```text
+The database for Prueba.Repo has been created
+```
+
+Ahora ejecutamos los assets
+
+```sh
+$ mix assets.deploy
+```
+
+Y mostraría un mensaje como:
+
+```text
+Check your digested files at "priv/static"
+```
+
+Ahora debemos modificar el archivo `config/dev.exs` para permitir
+acceso a otras ips usando `[ip: {0, 0, 0, 0}, port: 4000]`.
+
+```elixir
+config :prueba, PruebaWeb.Endpoint,
+  # Binding to loopback ipv4 address prevents access from other machines.
+  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
+  http: [ip: {0, 0, 0, 0}, port: 4000],
+```
+
+Finalmente podemos probar ejecutar el servidor con:
+
+```sh
+mix phx.server
+```
+
+Ahora podremos ver el resultado dentro del navegador.
+
+image:https://user-images.githubusercontent.com/292738/185839024-44d267a7-d984-4b80-9dc9-9070af306c71.png[]
+
+### Instalar Rust
+
+_Rust_ es un lenguaje de programación de bajo nivel muy popular
+y muchas herramientas están escritas con este lenguaje.
+Además es un gran amigo de _Elixir_ para crear bibliotecas
+que requieran acceso de bajo nivel.
+
+Como solamente lo necesitaremos para compilar algunas herramientas, 
+podemos usar `asdf`. Pero si se requiere algo más personalizado
+se puede usar https://rustup.rs/.
+
+```sh
+$ asdf plugin add rust https://github.com/asdf-community/asdf-rust.git
+$ asdf install rust 1.63.0
+$ asdf global rust 1.63.0
+```
+
+Verificamos que esté instalado:
+
+```sh
+$ cargo --version
+cargo 1.63.0 (fd9c4297c 2022-07-01)
+
+$ rustc --version
+rustc 1.63.0 (4b91a6ea7 2022-08-08)
+```
+
+Ahora incluimos los binarios al `$PATH`
+
+```sh
+$ vim ~./zshrc
+```
+
+En la última línea:
+
+```sh
+export PATH=/home/elixir/.cargo/bin:$PATH
+```
+
+Recargamos el archivo 
+```sh
+$ source ~/.zshrc
+```
+
+### Instalar ZelliJ
+
+https://github.com/zellij-org/zellij[ZelliJ] es un multiplexor de terminal, similar a https://github.com/tmux/tmux/wiki[Tmux]. Pero
+escrito en _Rust_. Nos da la posibilidad de separar la terminal
+en múltiples pestañas, para mayor comodidad.
+
+```sh
+$ cargo install --locked zellij
+```
+
+Una vez compilado, configuramos:
+
+```sh
+$ mkdir ~/.config/zellij
+$ zellij setup --dump-config > ~/.config/zellij/config.yaml
+```
+
+Podemos configurar varias opciones, 
+pero solamente seleccionaremos un https://zellij.dev/documentation/theme-gallery.html#tokyo-night[tema]: 
+
+```yaml
+# Choose the theme that is specified in the themes section.
+# For some examples, see: https://github.com/zellij-org/zellij/tree/main/example/themes
+# Default: default
+theme: tokyo-night
+```
+
+Lo guardamos en
+```sh
+$ mkdir ~/.config/zellij/themes
+$ vim ~/.config/zellij/themes/tokyo-night.yaml
+```
+
+```yaml
+# TokyoNight Theme
+# https://github.com/zellij-org/zellij/blob/main/example/themes/tokyo-night.yaml
+# Originally by https://github.com/enkia/tokyo-night-vscode-theme
+
+themes:
+  tokyo-night:
+    fg: [169,177,214] #A9B1D6
+    bg: [26,27,38] #1A1B26
+    black: [56,62,90] #383E5A
+    red: [249,51,87] #F9334D
+    green: [158,206,106]  #9ECE6A
+    yellow: [224,175,104] #E0AF68
+    blue: [122,162,247]  #7AA2F7
+    magenta: [187,154,247] #BB9AF7
+    cyan: [42,195,222] #2AC3DE
+    white: [192,202,245] #C0CAF5
+    orange: [255,158,100] #FF9E64
+```
+
+### Instalar GitUI
+
+https://github.com/extrawurst/gitui[GitUI] es una aplicación
+de terminal que permite manejar más simplemente los repositorios git.
+
+Para instalarla simplemente usamos el comando:
+
+```sh
+$ cargo install gitui
+```
+
+También podemos configurar sus colores creando un archivo llamado
+`~/.config/gitui/theme.ron`
+
+### Actualizar Neovim
+
+El problema de _Neovim_ que instalamos previamente es que
+utiliza una versión antigüa de _Neovim_ (0.4), la cual
+no funciona bien con algunos plugins de elixir que usaremos.
+Necesitamos una versión *0.5* o superior.
+
+Compilaremos la última versión de _Neovim_ desde la rama _master_.
+Es necesario debido a que las versiones stable y nightly están 
+precompiladas y no son compatibles con la Raspberry Pi.
+
+Primero https://gist.github.com/darcyparker/153124662b05c679c417[instalamos las dependencias].
+
+```sh
+$ sudo apt-get install -y \
+  autoconf \
+  automake \
+  cmake \
+  g++ \
+  gettext \
+  libncurses5-dev \
+  libtool \
+  libtool-bin \
+  libunibilium-dev \
+  libunibilium4 \
+  ninja-build \
+  pkg-config \
+  python3-pip \
+  software-properties-common \
+  unzip
+```
+
+Segundo habilitamos los plugins de python para neovim
+
+```sh
+$ pip3 install setuptools && pip3 install --upgrade pynvim
+```
+
+Tercero agregamos el plugin de neovim para _asdf_.
+
+```sh
+$ asdf plugin add neovim
+$ asdf install neovim ref:master
+```
+
+Una vez compilado verificamos que este disponible el binario
+
+```sh
+$ asdf which nvim
+/home/elixir/.asdf/installs/neovim/ref-master/bin/nvim
+
+$ nvim --version
+NVIM v0.8.0-dev-109-g7e7a1fa
+Build type: RelWithDebInfo
+```
+
+Finalmente crearemos un alias para usarlo y actualizarlo 
+más facilmente.
+
+Editamos el archivo `~/.zshrc`.
+
+```sh
+$ nvim ~/.zshrc
+```
+
+Añadimos al final.
+
+```text
+alias vim=nvim
+alias update-nvim-master='asdf uninstall neovim ref:master && asdf install neovim ref:master'
+export EDITOR=nvim
+```
+
+Y actualizamos
+
+```sh
+$ source ~/.zshrc
+```
+
+### Instalar Docker
+
+https://www.docker.com/[Docker] es la herramienta principal
+para trabajar con contenedores y _Dev Containers_. 
+
+Para https://www.linuxtechi.com/install-docker-engine-on-debian/[poder instalarlo] vamos a realizar lo siguiente:
+
+
+Instalamos las dependencias de Docker:
+
+```sh
+$ sudo apt install apt-transport-https ca-certificates curl gnupg lsb-release -y
+```
+
+Incluimos las llaves GPG de Docker:
+
+```sh
+$ curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+```
+
+Añadimos los repositorios de Docker:
+
+```sh
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+
+Instalamos Docker:
+
+```sh
+$ sudo apt update && sudo apt -y install docker-ce docker-ce-cli containerd.io
+```
+
+Verificamos que este instalado y ejecutándose:
+
+```sh
+$ sudo docker version && sudo systemctl status docker
+```
+
+Si por alguna razón no está ejecutándose, se puede usar:
+
+```sh
+$ sudo systemctl start docker
+```
+
+Agregamos al usuario `elixir` al grupo `docker`, para no necesitar sudo:
+
+```sh
+$ sudo usermod -aG docker elixir
+```
+
+Reiniciamos la sesión (log off y luego log in) para que se
+implementen los permisos.
+
+Verificamos que todo esté en orden con:
+
+```sh
+$ docker run hello-world
+```
+
+image:https://user-images.githubusercontent.com/292738/186752519-3c412796-2c44-4381-9660-22c6ed2bae09.png[Docker Hello World]
