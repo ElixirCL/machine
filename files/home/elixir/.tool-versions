@@ -1,0 +1,5 @@
+erlang 25.0.4
+elixir 1.13.4-otp-25
+nodejs 18.7.0
+neovim ref:master system
+rust 1.63.0
